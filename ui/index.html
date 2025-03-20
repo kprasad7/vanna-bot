@@ -388,6 +388,29 @@
             transform: translateY(-1px);
         }
         
+        /* New styles for session info */
+        .session-info {
+            padding: 8px 16px;
+            background: var(--gray-med);
+            font-size: 0.8rem;
+            color: var(--gray-dark);
+            text-align: center;
+        }
+        
+        .clear-session {
+            background: none;
+            border: none;
+            color: var(--link-color);
+            cursor: pointer;
+            font-size: 0.8rem;
+            text-decoration: underline;
+            margin-left: 8px;
+        }
+        
+        .clear-session:hover {
+            color: var(--link-hover);
+        }
+        
         /* Responsive styles */
         @media (max-width: 768px) {
             .chat-container {
@@ -409,6 +432,11 @@
                 <i class="fas fa-robot"></i>
             </div>
             <h2>Vanna AI Assistant</h2>
+        </div>
+        
+        <div class="session-info">
+            Session ID: <span id="session-id">Loading...</span>
+            <button class="clear-session" onclick="clearSession()">Start New Chat</button>
         </div>
         
         <div id="chat-box">
@@ -433,6 +461,57 @@
     </div>
 
     <script>
+        // Session management
+        let sessionId = localStorage.getItem('vannaSessionId');
+        let chatHistory = [];
+        
+        // Initialize session
+        function initSession() {
+            if (!sessionId) {
+                // Generate a new session ID if one doesn't exist
+                sessionId = 'session_' + Math.random().toString(36).substring(2, 15);
+                localStorage.setItem('vannaSessionId', sessionId);
+                chatHistory = [];
+                // Save empty chat history
+                localStorage.setItem('vannaChat_' + sessionId, JSON.stringify(chatHistory));
+            } else {
+                // Load existing chat history
+                const savedHistory = localStorage.getItem('vannaChat_' + sessionId);
+                if (savedHistory) {
+                    chatHistory = JSON.parse(savedHistory);
+                }
+            }
+            
+            // Update session ID display
+            document.getElementById('session-id').textContent = sessionId.substring(0, 8) + '...';
+            
+            // Clear the chat box
+            document.getElementById('chat-box').innerHTML = '';
+            
+            // Add welcome message if it's a new chat
+            if (chatHistory.length === 0) {
+                addMessage("Hi there! I'm Vanna, your AI assistant. How can I help you today?", 'bot');
+            } else {
+                // Load chat history
+                chatHistory.forEach(msg => {
+                    addMessage(msg.text, msg.sender, false, false);
+                });
+            }
+        }
+        
+        // Clear session and start a new chat
+        function clearSession() {
+            if (confirm("Are you sure you want to start a new chat? Your current conversation will be lost.")) {
+                sessionId = 'session_' + Math.random().toString(36).substring(2, 15);
+                localStorage.setItem('vannaSessionId', sessionId);
+                chatHistory = [];
+                localStorage.setItem('vannaChat_' + sessionId, JSON.stringify(chatHistory));
+                
+                // Update the UI
+                initSession();
+            }
+        }
+        
         // Initialize marked for markdown parsing
         marked.setOptions({
             highlight: function(code, lang) {
@@ -470,7 +549,10 @@
                 const response = await fetch("/ask", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ question: question })
+                    body: JSON.stringify({ 
+                        question: question,
+                        sessionId: sessionId // Send session ID to backend
+                    })
                 });
 
                 // Remove typing indicator
@@ -492,7 +574,7 @@
             }
         }
 
-        function addMessage(text, sender, isError = false) {
+        function addMessage(text, sender, isError = false, saveToHistory = true) {
             const chatBox = document.getElementById("chat-box");
             const messageDiv = document.createElement('div');
             
@@ -547,6 +629,17 @@
             });
             
             chatBox.scrollTop = chatBox.scrollHeight;
+            
+            // Save to chat history
+            if (saveToHistory) {
+                const timestamp = new Date().toISOString();
+                chatHistory.push({
+                    sender: sender,
+                    text: text,
+                    timestamp: timestamp
+                });
+                localStorage.setItem('vannaChat_' + sessionId, JSON.stringify(chatHistory));
+            }
         }
 
         function highlightUserLinks(text) {
@@ -602,47 +695,14 @@
             messageElement.appendChild(previewDiv);
         }
 
-        // Load sample chat history
-        window.addEventListener('DOMContentLoaded', () => {
-            // Sample chat history to populate the UI
-            const chatHistory = [
-                {
-                    sender: 'user',
-                    text: 'how to integrate llm with vanna ai'
-                },
-                {
-                    sender: 'bot',
-                    text: "Here are a few ways to integrate an LLM with Vanna AI:\n\n- Use Vanna's API to send prompts and receive completions. You can pass prompts to Vanna's API and get back AI-generated responses. This allows you to leverage Vanna's capabilities from within your own application.\n\n- Fine-tune Vanna on your own data. Vanna provides a fine-tuning API that allows you to adapt the model to your specific domain by training it on custom data. This can make Vanna more specialized for your particular use case.\n\n- Build a pipeline that pre-processes inputs before sending to Vanna. You can use an LLM like GPT-3 or Codex to do initial processing on prompts, and then pass the output to Vanna for further refinement and completion. This allows you to leverage strengths of different models.\n\n- Use an LLM to rank/filter Vanna outputs. Generate multiple responses from Vanna, and then use an LLM to select the best, most relevant ones. The LLM helps narrow down the options.\n\n- Combine Vanna and LLM outputs. Generate responses from both Vanna and an LLM, and then intelligently merge them to get the best of both. This can help cover weaknesses in either model.\n\nThe key is leveraging Vanna's capabilities as a core AI assistant, while using other LLMs as needed to expand the range of functions."
-                },
-                {
-                    sender: 'user',
-                    text: 'how to integrate with openai lmm with vanna api'
-                },
-                {
-                    sender: 'bot',
-                    text: "To integrate OpenAI's LLM models like GPT-3 with Vanna, you can use the OpenAI_Chat class in vanna.openai.openai_chat. The key steps are:\n\n1. Install Vanna and OpenAI Python SDK\n```python\npip install vanna openai\n```\n\n2. Instantiate OpenAI_Chat with your OpenAI API key\n```python\nfrom vanna.openai import OpenAI_Chat\nchat = OpenAI_Chat(config={\"api_key\": \"YOUR_API_KEY\"})\n```\n\n3. Call generate() to get a response from the LLM\n```python\nresponse = chat.generate(\"Hello!\")\n```\n\nThe OpenAI_Chat class handles setting up the OpenAI client and temperature/top-p sampling parameters. You can also override the default model by passing a `model` parameter in the config, e.g.\n```python\nchat = OpenAI_Chat(config={\"api_key\": \"YOUR_API_KEY\", \"model\": \"text-davinci-003\"})\n```\n\nSo in summary, Vanna provides a simple wrapper for integrating OpenAI LLMs out of the box. Let me know if you have any other questions!"
-                }
-            ];
+        // Format timestamp
+        function formatTime(timestamp) {
+            const date = new Date(timestamp);
+            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
 
-            // Clear welcome message
-            document.getElementById('chat-box').innerHTML = '';
-
-            // Add history messages
-            chatHistory.forEach(msg => {
-                addMessage(msg.text, msg.sender);
-            });
-            
-            // Add a link preview to the last message
-            const lastMessage = document.querySelector('#chat-box .message:last-child');
-            if (lastMessage) {
-                createLinkPreview(
-                    lastMessage, 
-                    "Vanna.AI OpenAI Integration",
-                    "Official documentation on integrating OpenAI models with Vanna.AI",
-                    "https://vanna.ai/docs/integrations/openai/"
-                );
-            }
-        });
+        // Initialize session when page loads
+        window.addEventListener('DOMContentLoaded', initSession);
     </script>
 </body>
 </html>
