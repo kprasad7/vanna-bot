@@ -1,4 +1,4 @@
-🔹 README: Minimal End-to-End Vanna Repository Indexing & Q&A Solution
+ Minimal End-to-End Vanna Repository Indexing & Q&A Solution
 📌 Overview
 This project provides a minimal end-to-end solution that indexes the vanna-ai/vanna repository from GitHub and enables a Q&A interface using local embeddings (Hugging Face) and FastAPI.
 
