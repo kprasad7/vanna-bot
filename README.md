@@ -104,6 +104,27 @@ This project uses the following Python packages:
 - `boto3`
 - `pydantic`
 - `pickle`
+- 
+
+**To use Postman for testing this endpoint, you should set up a POST request to the full URL where your backend is running. For example, if you're running the backend locally on port 5500, you would use:
+
+bash
+Copy
+http://localhost:5500/ask
+In Postman:
+
+Method: Set to POST.
+URL: Enter http://localhost:5500/ask.
+Headers:
+Key: Content-Type
+Value: application/json
+Body: Choose the raw option and select JSON. Then include a JSON payload similar to the following:
+json
+Copy
+{
+  "question": "What is the code in main.py?",
+  "sessionId": "your-session-id"
+}**
 
 ## 🔗 License
 This project follows the license of the `vanna-ai/vanna` repository.
