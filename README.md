@@ -15,8 +15,8 @@ This project provides a minimal end-to-end solution that indexes the `vanna-ai/v
 
 ### 1️⃣ Clone the Repository
 ```bash
-git clone https://github.com/vanna-ai/vanna.git vanna_repo
-cd vanna_repo
+https://github.com/kprasad7/vanna-bot/tree/main
+cd vanna-bot
 ```
 
 ### 2️⃣ Set Up a Virtual Environment (Recommended)
