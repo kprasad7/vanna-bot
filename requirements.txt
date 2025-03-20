@@ -1,0 +1,12 @@
+uvicorn
+requests
+sentence-transformers
+numpy
+faiss-cpu
+sentence-transformers
+numpy
+fastapi
+uvicorn
+boto3
+pydantic
+

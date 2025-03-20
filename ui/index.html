@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vanna AI Chatbot</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.0.2/marked.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #4f46e5;
+            --primary-light: #e0e7ff;
+            --primary-dark: #3730a3;
+            --link-color: #2563eb;
+            --link-hover: #1d4ed8;
+            --link-bg: rgba(37, 99, 235, 0.1);
+            --code-bg: #282c34;
+            --code-color: #abb2bf;
+            --gray-light: #f9fafb;
+            --gray-med: #f3f4f6;
+            --gray-dark: #6b7280;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --radius: 12px;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--gray-light);
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .chat-container {
+            max-width: 800px;
+            height: 100vh;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            background: white;
+            box-shadow: var(--shadow);
+        }
+        
+        .chat-header {
+            background: var(--primary-color);
+            color: white;
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            border-radius: var(--radius) var(--radius) 0 0;
+        }
+        
+        .chat-header h2 {
+            margin-left: 12px;
+            font-weight: 600;
+            font-size: 1.5rem;
+        }
+        
+        .chat-header .logo {
+            width: 32px;
+            height: 32px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .chat-header .logo i {
+            color: var(--primary-color);
+            font-size: 18px;
+        }
+        
+        #chat-box {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+            background: var(--gray-light);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        
+        .message {
+            max-width: 75%;
+            padding: 16px;
+            border-radius: 18px;
+            position: relative;
+            animation: fadeIn 0.3s ease;
+            line-height: 1.5;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .user-message {
+            align-self: flex-end;
+            background: var(--primary-color);
+            color: white;
+            border-radius: 18px 18px 4px 18px;
+        }
+        
+        .bot-message {
+            align-self: flex-start;
+            background: white;
+            color: #333;
+            border-radius: 18px 18px 18px 4px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+        
+        .message-time {
+            font-size: 0.7rem;
+            color: var(--gray-dark);
+            margin-top: 8px;
+            text-align: right;
+        }
+        
+        /* Rich text formatting */
+        .message p {
+            margin-bottom: 0.75rem;
+        }
+        
+        .message p:last-child {
+            margin-bottom: 0;
+        }
+        
+        .message ul, .message ol {
+            margin-left: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .message li {
+            margin-bottom: 0.5rem;
+        }
+        
+        .message h1, .message h2, .message h3 {
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+        
+        .message h1 { font-size: 1.4rem; }
+        .message h2 { font-size: 1.2rem; }
+        .message h3 { font-size: 1.1rem; }
+        
+        /* Code formatting */
+        .message pre {
+            background: var(--code-bg);
+            border-radius: 8px;
+            padding: 12px;
+            margin: 10px 0;
+            overflow-x: auto;
+            position: relative;
+        }
+        
+        .message code {
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+        
+        .message p code {
+            background: rgba(0,0,0,0.05);
+            padding: 2px 4px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+        
+        .user-message p code {
+            background: rgba(255,255,255,0.2);
+            color: white;
+        }
+        
+        .copy-code-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: rgba(255,255,255,0.1);
+            border: none;
+            border-radius: 4px;
+            padding: 4px 8px;
+            color: #aaa;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .copy-code-btn:hover {
+            background: rgba(255,255,255,0.2);
+            color: white;
+        }
+        
+        /* Link styles */
+        .user-message a {
+            color: white;
+            background: rgba(255,255,255,0.2);
+            padding: 2px 6px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: background 0.2s ease;
+            display: inline-block;
+            margin: 2px 0;
+        }
+        
+        .user-message a:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .bot-message a {
+            color: var(--link-color);
+            background: var(--link-bg);
+            padding: 2px 6px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            display: inline-block;
+            margin: 2px 0;
+        }
+        
+        .bot-message a:hover {
+            background: rgba(37, 99, 235, 0.15);
+            transform: translateY(-1px);
+        }
+        
+        .bot-message a i {
+            margin-right: 4px;
+            font-size: 0.8em;
+        }
+        
+        .link-preview {
+            margin-top: 12px;
+            padding: 12px;
+            background: var(--gray-med);
+            border-radius: 8px;
+            border-left: 4px solid var(--link-color);
+            font-size: 0.9rem;
+            transition: transform 0.2s ease;
+            cursor: pointer;
+        }
+        
+        .link-preview:hover {
+            transform: translateY(-2px);
+        }
+        
+        .link-preview-title {
+            font-weight: 600;
+            color: var(--primary-dark);
+            margin-bottom: 6px;
+        }
+        
+        .link-preview-description {
+            color: var(--gray-dark);
+            margin-bottom: 6px;
+            font-size: 0.85rem;
+        }
+        
+        .link-preview-url {
+            color: var(--gray-dark);
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+        }
+        
+        .link-preview-url i {
+            margin-right: 4px;
+            font-size: 0.9em;
+        }
+        
+        .typing-indicator {
+            padding: 12px 16px;
+            background: white;
+            border-radius: 18px;
+            align-self: flex-start;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+        
+        .typing-indicator span {
+            width: 8px;
+            height: 8px;
+            margin: 0 2px;
+            background: var(--gray-dark);
+            border-radius: 50%;
+            display: inline-block;
+            animation: typing 1.4s infinite both;
+        }
+        
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        
+        @keyframes typing {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+            100% { transform: translateY(0); }
+        }
+        
+        .chat-input-container {
+            display: flex;
+            padding: 16px;
+            background: white;
+            border-top: 1px solid var(--gray-med);
+        }
+        
+        #questionInput {
+            flex: 1;
+            padding: 14px 16px;
+            border: 1px solid var(--gray-med);
+            border-radius: 24px;
+            font-size: 1rem;
+            outline: none;
+            transition: all 0.3s ease;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        
+        #questionInput:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px var(--primary-light);
+        }
+        
+        .send-button {
+            width: 48px;
+            height: 48px;
+            margin-left: 12px;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .send-button:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        
+        .send-button:active {
+            transform: translateY(0);
+        }
+        
+        .send-button i {
+            font-size: 1.2rem;
+        }
+        
+        .suggestions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 12px 16px;
+            background: white;
+        }
+        
+        .suggestion-chip {
+            padding: 8px 16px;
+            background: var(--gray-med);
+            border-radius: 16px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+        }
+        
+        .suggestion-chip:hover {
+            background: var(--primary-light);
+            color: var(--primary-dark);
+            border-color: var(--primary-color);
+            transform: translateY(-1px);
+        }
+        
+        /* Responsive styles */
+        @media (max-width: 768px) {
+            .chat-container {
+                height: 100vh;
+                width: 100%;
+                border-radius: 0;
+            }
+            
+            .message {
+                max-width: 85%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <div class="logo">
+                <i class="fas fa-robot"></i>
+            </div>
+            <h2>Vanna AI Assistant</h2>
+        </div>
+        
+        <div id="chat-box">
+            <div class="message bot-message">
+                <p>Hi there! I'm Vanna, your AI assistant. How can I help you today?</p>
+                <div class="message-time">Just now</div>
+            </div>
+        </div>
+        
+        <div class="suggestions">
+            <div class="suggestion-chip" onclick="useQuery(this)">How to use Vanna AI?</div>
+            <div class="suggestion-chip" onclick="useQuery(this)">Integrate with OpenAI</div>
+            <div class="suggestion-chip" onclick="useQuery(this)">Show me an example</div>
+        </div>
+        
+        <div class="chat-input-container">
+            <input type="text" id="questionInput" placeholder="Type your question here..." autocomplete="off">
+            <button class="send-button" onclick="askQuestion()">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Initialize marked for markdown parsing
+        marked.setOptions({
+            highlight: function(code, lang) {
+                if (lang && hljs.getLanguage(lang)) {
+                    return hljs.highlight(code, { language: lang }).value;
+                }
+                return hljs.highlightAuto(code).value;
+            },
+            breaks: true,
+            gfm: true
+        });
+
+        async function askQuestion() {
+            const questionInput = document.getElementById("questionInput");
+            const chatBox = document.getElementById("chat-box");
+
+            const question = questionInput.value.trim();
+            if (!question) {
+                return;
+            }
+
+            // Display user question
+            addMessage(question, 'user');
+            questionInput.value = "";
+
+            // Show typing indicator
+            const typingIndicator = document.createElement('div');
+            typingIndicator.className = 'typing-indicator';
+            typingIndicator.innerHTML = '<span></span><span></span><span></span>';
+            chatBox.appendChild(typingIndicator);
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            // Send question to backend
+            try {
+                const response = await fetch("/ask", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ question: question })
+                });
+
+                // Remove typing indicator
+                chatBox.removeChild(typingIndicator);
+
+                if (!response.ok) {
+                    throw new Error("Server error. Please try again later.");
+                }
+
+                const data = await response.json();
+                addMessage(data.answer, 'bot');
+
+            } catch (error) {
+                // Remove typing indicator
+                if (typingIndicator.parentNode === chatBox) {
+                    chatBox.removeChild(typingIndicator);
+                }
+                addMessage(error.message, 'bot', true);
+            }
+        }
+
+        function addMessage(text, sender, isError = false) {
+            const chatBox = document.getElementById("chat-box");
+            const messageDiv = document.createElement('div');
+            
+            messageDiv.className = sender === 'user' ? 'message user-message' : 'message bot-message';
+            if (isError) {
+                messageDiv.style.backgroundColor = '#fee2e2';
+                messageDiv.style.color = '#991b1b';
+            }
+            
+            // Process text based on who is sending it
+            let processedText;
+            if (sender === 'bot') {
+                // Parse markdown for bot messages
+                processedText = marked.parse(text);
+                // Then enhance links
+                processedText = enhanceLinks(processedText);
+                // Add copy buttons to code blocks
+                processedText = addCopyButtons(processedText);
+            } else {
+                // For user messages, just highlight links
+                processedText = highlightUserLinks(text);
+            }
+            
+            messageDiv.innerHTML = processedText;
+            
+            // Add timestamp
+            const timeDiv = document.createElement('div');
+            timeDiv.className = 'message-time';
+            timeDiv.textContent = 'Just now';
+            messageDiv.appendChild(timeDiv);
+            
+            chatBox.appendChild(messageDiv);
+            
+            // Initialize code highlighting
+            messageDiv.querySelectorAll('pre code').forEach((block) => {
+                hljs.highlightElement(block);
+            });
+            
+            // Add event listeners for copy buttons
+            messageDiv.querySelectorAll('.copy-code-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const codeBlock = this.nextElementSibling;
+                    navigator.clipboard.writeText(codeBlock.textContent);
+                    
+                    // Change button text temporarily
+                    const originalText = this.textContent;
+                    this.textContent = 'Copied!';
+                    setTimeout(() => {
+                        this.textContent = originalText;
+                    }, 2000);
+                });
+            });
+            
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function highlightUserLinks(text) {
+            // Regular expression to find URLs
+            const urlRegex = /(https?:\/\/[^\s]+)/g;
+            
+            // Replace URLs with anchor tags
+            return text.replace(urlRegex, function(url) {
+                return `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+            });
+        }
+        
+        function enhanceLinks(html) {
+            // Replace anchor tags with enhanced versions
+            return html.replace(/<a\s+(?:[^>]*?\s+)?href="([^"]*)"([^>]*)>(.*?)<\/a>/g, function(match, url, attrs, text) {
+                if (!attrs.includes('target="_blank"')) {
+                    attrs += ' target="_blank" rel="noopener noreferrer"';
+                }
+                return `<a href="${url}"${attrs}><i class="fas fa-external-link-alt"></i>${text}</a>`;
+            });
+        }
+        
+        function addCopyButtons(html) {
+            // Add copy buttons to code blocks
+            return html.replace(/<pre><code/g, '<pre><button class="copy-code-btn">Copy</button><code');
+        }
+
+        function useQuery(element) {
+            const questionInput = document.getElementById("questionInput");
+            questionInput.value = element.textContent;
+            questionInput.focus();
+        }
+
+        // Add event listener for Enter key
+        document.getElementById("questionInput").addEventListener("keypress", function(event) {
+            if (event.key === "Enter") {
+                askQuestion();
+            }
+        });
+
+        // Helper function to create specific message types
+        function createLinkPreview(messageElement, title, description, url) {
+            const previewDiv = document.createElement('div');
+            previewDiv.className = 'link-preview';
+            previewDiv.onclick = function() { window.open(url, '_blank', 'noopener'); };
+            
+            previewDiv.innerHTML = `
+                <div class="link-preview-title">${title}</div>
+                <div class="link-preview-description">${description}</div>
+                <div class="link-preview-url"><i class="fas fa-link"></i>${url}</div>
+            `;
+            
+            messageElement.appendChild(previewDiv);
+        }
+
+        // Load sample chat history
+        window.addEventListener('DOMContentLoaded', () => {
+            // Sample chat history to populate the UI
+            const chatHistory = [
+                {
+                    sender: 'user',
+                    text: 'how to integrate llm with vanna ai'
+                },
+                {
+                    sender: 'bot',
+                    text: "Here are a few ways to integrate an LLM with Vanna AI:\n\n- Use Vanna's API to send prompts and receive completions. You can pass prompts to Vanna's API and get back AI-generated responses. This allows you to leverage Vanna's capabilities from within your own application.\n\n- Fine-tune Vanna on your own data. Vanna provides a fine-tuning API that allows you to adapt the model to your specific domain by training it on custom data. This can make Vanna more specialized for your particular use case.\n\n- Build a pipeline that pre-processes inputs before sending to Vanna. You can use an LLM like GPT-3 or Codex to do initial processing on prompts, and then pass the output to Vanna for further refinement and completion. This allows you to leverage strengths of different models.\n\n- Use an LLM to rank/filter Vanna outputs. Generate multiple responses from Vanna, and then use an LLM to select the best, most relevant ones. The LLM helps narrow down the options.\n\n- Combine Vanna and LLM outputs. Generate responses from both Vanna and an LLM, and then intelligently merge them to get the best of both. This can help cover weaknesses in either model.\n\nThe key is leveraging Vanna's capabilities as a core AI assistant, while using other LLMs as needed to expand the range of functions."
+                },
+                {
+                    sender: 'user',
+                    text: 'how to integrate with openai lmm with vanna api'
+                },
+                {
+                    sender: 'bot',
+                    text: "To integrate OpenAI's LLM models like GPT-3 with Vanna, you can use the OpenAI_Chat class in vanna.openai.openai_chat. The key steps are:\n\n1. Install Vanna and OpenAI Python SDK\n```python\npip install vanna openai\n```\n\n2. Instantiate OpenAI_Chat with your OpenAI API key\n```python\nfrom vanna.openai import OpenAI_Chat\nchat = OpenAI_Chat(config={\"api_key\": \"YOUR_API_KEY\"})\n```\n\n3. Call generate() to get a response from the LLM\n```python\nresponse = chat.generate(\"Hello!\")\n```\n\nThe OpenAI_Chat class handles setting up the OpenAI client and temperature/top-p sampling parameters. You can also override the default model by passing a `model` parameter in the config, e.g.\n```python\nchat = OpenAI_Chat(config={\"api_key\": \"YOUR_API_KEY\", \"model\": \"text-davinci-003\"})\n```\n\nSo in summary, Vanna provides a simple wrapper for integrating OpenAI LLMs out of the box. Let me know if you have any other questions!"
+                }
+            ];
+
+            // Clear welcome message
+            document.getElementById('chat-box').innerHTML = '';
+
+            // Add history messages
+            chatHistory.forEach(msg => {
+                addMessage(msg.text, msg.sender);
+            });
+            
+            // Add a link preview to the last message
+            const lastMessage = document.querySelector('#chat-box .message:last-child');
+            if (lastMessage) {
+                createLinkPreview(
+                    lastMessage, 
+                    "Vanna.AI OpenAI Integration",
+                    "Official documentation on integrating OpenAI models with Vanna.AI",
+                    "https://vanna.ai/docs/integrations/openai/"
+                );
+            }
+        });
+    </script>
+</body>
+</html>
