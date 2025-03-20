@@ -1,17 +1,40 @@
-# vanna-bot
+🔹 README: Minimal End-to-End Vanna Repository Indexing & Q&A Solution
+📌 Overview
+This project provides a minimal end-to-end solution that indexes the vanna-ai/vanna repository from GitHub and enables a Q&A interface using local embeddings (Hugging Face) and FastAPI.
 
-A minimal end-to-end solution that indexes the [vanna-ai/vanna](https://github.com/vanna-ai/vanna) repository (public GitHub) and provides a Q&A interface using local embeddings (Hugging Face) and FastAPI.
+🚀 Features
+✔ Automated GitHub Repository Indexing – Clones the vanna-ai/vanna repo and processes all relevant text-based files.
+✔ Local Embeddings for Search – Uses Hugging Face models to generate embeddings for repository files.
+✔ Efficient FAISS-Based Retrieval – Enables fast, vector-based lookup of relevant file content.
+✔ GitHub File Linking – Each indexed file includes a direct GitHub link for easy reference.
+✔ FastAPI-Powered Q&A Interface – Users can ask questions about the repo’s code, structure, and files.
+✔ Claude 2.0 Integration (AWS Bedrock) – Enhances responses by summarizing relevant content.
 
-## Features
+🛠️ Installation & Setup
+1️⃣ Clone the Repository
+sh
+Copy
+Edit
+git clone https://github.com/vanna-ai/vanna.git vanna_repo
+cd vanna_repo
+2️⃣ Install Dependencies
+sh
+Copy
+Edit
+pip install -r requirements.txt
+3️⃣ Run Indexing
+sh
+Copy
+Edit
+python indexing.py
+This step embeds the repository using Hugging Face models and stores it in a FAISS index.
 
-- **No external clone needed**: Fetches files from GitHub.
-- **Local Embeddings**: Uses `sentence-transformers` to embed text.
-- **In-Memory VectorStore**: No external database needed.
-- **FastAPI**: Exposes a `/ask` endpoint for Q&A.
-- **HTML/CSS/JS**: Minimal front-end to query the backend.
-- **Out-of-Scope Handling**: If no relevant context, respond with an out-of-scope message.
-- **References**: Return the files used for each answer.
-
+4️⃣ Start the FastAPI Server
+sh
+Copy
+Edit
+uvicorn main:app --reload
+The server runs at http://127.0.0.1:8000
 ## Requirements
 
 - Python 3.8 or higher.
