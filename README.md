@@ -122,7 +122,6 @@ To use Postman for testing this endpoint, you should set up a POST request to th
   ```json
   {
       "question": "What is the code in main.py?",
-      "sessionId": "your-session-id"
   }
 
 
