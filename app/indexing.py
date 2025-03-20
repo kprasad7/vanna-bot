@@ -3,98 +3,126 @@ import time
 import faiss
 import numpy as np
 import pickle
+import logging
 from config import LocalEmbedding
 
+# Setup logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 GITHUB_REPO_URL = "https://github.com/vanna-ai/vanna"
 LOCAL_REPO_DIR = "vanna_repo"
 INDEX_FILE = "vector_index.faiss"
 METADATA_FILE = "metadata.pkl"
-CHUNK_SIZE = 1000  # Max characters per chunk
+FULL_FILE_INDEX_FILE = "full_file_index.faiss"
+FULL_FILE_METADATA_FILE = "full_file_metadata.pkl"
+CHUNK_SIZE = 1000
+BINARY_EXTENSIONS = (".png", ".jpg", ".jpeg", ".gif", ".pdf", ".exe", ".zip", ".mp4", ".mp3")
 
-
-BINARY_EXTENSIONS = (".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff", ".ico", 
-                     ".pdf", ".exe", ".zip", ".tar", ".gz", ".rar", ".7z", 
-                     ".mp4", ".mp3", ".pack", ".idx", ".rev")
-
-def get_github_url(file_path):
-    """ Convert local file path to a GitHub URL. """
-    relative_path = file_path.replace(LOCAL_REPO_DIR + "/", "").replace("\\", "/")
+def get_github_url(file_path: str) -> str:
+    relative_path = os.path.relpath(file_path, LOCAL_REPO_DIR).replace("\\", "/")
     return f"{GITHUB_REPO_URL}/blob/main/{relative_path}"
 
-def get_local_files():
-    """ Retrieve all text files in the repository, ignoring binary files. """
+def get_local_files() -> list:
     relevant_files = []
     for root, _, files in os.walk(LOCAL_REPO_DIR):
+        if ".git" in root:
+            continue
         for file in files:
-            if file.endswith(BINARY_EXTENSIONS) or ".git" in root:
-                continue  # Ignore binary & .git files
-            full_path = os.path.join(root, file)
-            relevant_files.append(full_path)
+            if file.lower().endswith(BINARY_EXTENSIONS):
+                continue
+            relevant_files.append(os.path.join(root, file))
+    logging.info(f"Found {len(relevant_files)} text files.")
     return relevant_files
 
-def is_binary(file_path):
-    """ Check if a file is binary by reading the first few bytes. """
-    try:
-        with open(file_path, "rb") as f:
-            return b"\0" in f.read(1024)  # If NULL byte is found, it's binary
-    except Exception:
-        return True  # Treat unreadable files as binary
-
 def fetch_file_content(file_path: str) -> str:
-    """ Read file content, ignoring binary files. """
-    if is_binary(file_path):
-        print(f"⚠️ Skipping binary file: {file_path}")
-        return ""
-
     try:
-        with open(file_path, "r", encoding="utf-8") as file:
-            return file.read()
-    except UnicodeDecodeError:
-        print(f"⚠️ Skipping unreadable text file: {file_path}")
-        return ""
+        with open(file_path, "r", encoding="utf-8") as f:
+            return f.read()
     except Exception as e:
-        print(f"❌ Error reading {file_path}: {e}")
+        logging.error(f"Error reading {file_path}: {e}")
         return ""
 
 def chunk_text(text: str) -> list:
-    """ Split text into smaller chunks. """
-    return [text[i:i+CHUNK_SIZE] for i in range(0, len(text), CHUNK_SIZE)]
+    chunks, start, text_length = [], 0, len(text)
+    while start < text_length:
+        end = start + CHUNK_SIZE
+        newline_index = text.rfind('\n', start, end)
+        if newline_index != -1 and newline_index > start:
+            end = newline_index
+        chunks.append(text[start:end])
+        start = end
+    return chunks
 
 def index_repository():
-    """ Index repository with embeddings and store file URLs. """
     start_time = time.time()
     file_paths = get_local_files()
-    
     embedder = LocalEmbedding()
-    index = None
-    metadata = []
-
+    
+    index, full_file_index = None, None
+    metadata, full_file_metadata = [], []
+    
     for path in file_paths:
         content = fetch_file_content(path)
         if not content:
             continue
 
         chunks = chunk_text(content)
-        embeddings = [embedder.embed(chunk) for chunk in chunks]
-        
-        if index is None:
-            index = faiss.IndexFlatL2(len(embeddings[0]))
+        try:
+            embeddings = [embedder.embed(chunk) for chunk in chunks]
+            full_file_embedding = embedder.embed(content)
+        except Exception as e:
+            logging.error(f"Embedding error in file {path}: {e}")
+            continue
 
-        for i, embedding in enumerate(embeddings):
-            index.add(np.array([embedding]).astype('float32'))
+        if embeddings and index is None:
+            vector_dim = len(embeddings[0])
+            index = faiss.IndexFlatL2(vector_dim)
+            full_file_index = faiss.IndexFlatL2(vector_dim)
+
+        for i, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
+            index.add(np.array([embedding]).astype("float32"))
             metadata.append({
-                "file": path.replace(LOCAL_REPO_DIR + "/", ""),
+                "file": os.path.relpath(path, LOCAL_REPO_DIR),
                 "github_url": get_github_url(path),
                 "chunk": i,
-                "content": chunks[i]
+                "content": chunk
             })
+        
+        # Add full file embedding
+        full_file_index.add(np.array([full_file_embedding]).astype("float32"))
+        full_file_metadata.append({
+            "file": os.path.relpath(path, LOCAL_REPO_DIR),
+            "github_url": get_github_url(path),
+            "content": content
+        })
 
-    faiss.write_index(index, INDEX_FILE)
-    with open(METADATA_FILE, "wb") as f:
-        pickle.dump(metadata, f)
+    if index is None:
+        logging.error("No embeddings were added to the index.")
+        return
 
-    print(f"\n✅ Indexed {len(metadata)} chunks in {time.time() - start_time:.2f} seconds.")
+    try:
+        faiss.write_index(index, INDEX_FILE)
+        with open(METADATA_FILE, "wb") as f:
+            pickle.dump(metadata, f)
+
+        faiss.write_index(full_file_index, FULL_FILE_INDEX_FILE)
+        with open(FULL_FILE_METADATA_FILE, "wb") as f:
+            pickle.dump(full_file_metadata, f)
+        
+        logging.info(f"Indexed {len(metadata)} chunks and {len(full_file_metadata)} full files in {time.time() - start_time:.2f} seconds.")
+    except Exception as e:
+        logging.error(f"Error saving index or metadata: {e}")
+
+def retrieve_code(file_name: str):
+    try:
+        with open(FULL_FILE_METADATA_FILE, "rb") as f:
+            full_file_metadata = pickle.load(f)
+        for data in full_file_metadata:
+            if file_name in data["file"]:
+                return data["content"]
+    except Exception as e:
+        logging.error(f"Error retrieving file content: {e}")
+    return "File not found."
 
 if __name__ == "__main__":
     index_repository()
